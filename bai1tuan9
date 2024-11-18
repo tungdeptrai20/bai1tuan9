@@ -1,0 +1,129 @@
+#include <iostream>
+#include <string>
+#include <vector>
+#include <algorithm> 
+
+using namespace std;
+
+
+struct Node {
+    string fileName;    // Tên file
+    int fileSize;       // Kích thước file (tính bằng MB)
+    string timeStamp;   // Thời gian tạo file (dạng YYYY-MM-DD HH:MM:SS)
+    Node* next;         // Con trỏ trỏ đến node tiếp theo
+
+    Node(string name, int size, string time) : fileName(name), fileSize(size), timeStamp(time), next(nullptr) {}
+};
+
+
+void insertFile(Node*& head, const string& name, int size, const string& time) {
+    Node* newNode = new Node(name, size, time);
+
+    if (head == nullptr || head->timeStamp > time) {
+        newNode->next = head;
+        head = newNode;
+    } else {
+        Node* temp = head;
+        while (temp->next != nullptr && temp->next->timeStamp <= time) {
+            temp = temp->next;
+        }
+        newNode->next = temp->next;
+        temp->next = newNode;
+    }
+}
+
+
+void printFiles(Node* head) {
+    Node* temp = head;
+    cout << "Danh sách file trong thư mục:\n";
+    while (temp != nullptr) {
+        cout << "File: " << temp->fileName << ", Size: " << temp->fileSize << " MB, Time: " << temp->timeStamp << endl;
+        temp = temp->next;
+    }
+    cout << endl;
+}
+
+
+int calculateTotalSize(Node* head) {
+    int totalSize = 0;
+    Node* temp = head;
+    while (temp != nullptr) {
+        totalSize += temp->fileSize;
+        temp = temp->next;
+    }
+    return totalSize;
+}
+
+
+void backupToUSB(Node*& head) {
+    const int USB_SIZE_MB = 32 * 1024; // 32GB đổi ra MB
+    int totalSize = calculateTotalSize(head);
+
+    if (totalSize <= USB_SIZE_MB) {
+        cout << "Tất cả các file đều vừa trong USB 32GB.\n";
+        return;
+    }
+
+
+    vector<Node*> fileList;
+    Node* temp = head;
+
+    while (temp != nullptr) {
+        fileList.push_back(temp);
+        temp = temp->next;
+    }
+
+    
+    sort(fileList.begin(), fileList.end(), [](Node* a, Node* b) {
+        return a->fileSize < b->fileSize;
+    });
+
+    
+    int removedSize = 0;
+    while (totalSize > USB_SIZE_MB && !fileList.empty()) {
+        Node* smallestFile = fileList.front();
+        fileList.erase(fileList.begin());
+        totalSize -= smallestFile->fileSize;
+        removedSize += smallestFile->fileSize;
+
+        
+        if (head == smallestFile) {
+            head = head->next;
+        } else {
+            Node* prev = head;
+            while (prev->next != smallestFile) {
+                prev = prev->next;
+            }
+            prev->next = smallestFile->next;
+        }
+        delete smallestFile;
+    }
+
+    cout << "Đã loại bỏ các file với tổng kích thước: " << removedSize << " MB.\n";
+}
+
+
+int main() {
+    Node* head = nullptr;
+
+   
+    insertFile(head, "file1.txt", 1024, "2024-11-17 10:00:00");
+    insertFile(head, "file2.txt", 2048, "2024-11-17 12:00:00");
+    insertFile(head, "file3.txt", 512, "2024-11-17 09:00:00");
+    insertFile(head, "file4.txt", 8192, "2024-11-16 08:00:00");
+
+    
+    printFiles(head);
+
+    
+    int totalSize = calculateTotalSize(head);
+    cout << "Tổng kích thước các file: " << totalSize << " MB\n";
+
+   
+    backupToUSB(head);
+
+    
+    printFiles(head);
+
+    return 0;
+}
